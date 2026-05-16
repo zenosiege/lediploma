@@ -83,3 +83,6 @@ CMakeLists.txt.user*
 /log*/
 /install*/
 /.qtc_clangd*/
+/src/sun_compass/
+/src/sun_compass_odom/
+/src/test_image*/

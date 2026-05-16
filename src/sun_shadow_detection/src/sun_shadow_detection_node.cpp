@@ -17,7 +17,7 @@ public:
         this->declare_parameter("max_radius", 500);
         this->declare_parameter("shadow_thresh", 80);
 
-        // НОВЫЙ ПАРАМЕТР: во сколько раз уменьшаем зону поиска тени
+        // во сколько раз уменьшаем зону поиска тени
         this->declare_parameter("radius_scale", 1.5);
 
         lastLogTime = this->now();
