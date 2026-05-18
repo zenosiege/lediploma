@@ -9,19 +9,18 @@ class ShadowFilterNode : public rclcpp::Node
 public:
     ShadowFilterNode() : Node("shadow_filter_node")
     {
-        // Параметры для настройки "на лету"
-        this->declare_parameter("min_contour_area", 500.0);
+        // Настройки размеров тени
+        this->declare_parameter("min_contour_area", 20.0);
         this->declare_parameter("max_contour_area", 50000.0);
 
-        // Подписываемся на сырую картинку (замени топик на свой)
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/camera/image_raw", 10,
+            "/camera", 10,
             std::bind(&ShadowFilterNode::image_callback, this, std::placeholders::_1));
 
-        // Публикуем готовую черно-белую маску тени
-        publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/camera/shadow_mask", 10);
+        publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/shadow_mask", 10);
+        debug_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/debug_thresh", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Shadow Filter Node initialized. Ready to clean the mess.");
+        RCLCPP_INFO(this->get_logger(), "Shadow Filter: Auto-exposure resistant mode enabled.");
     }
 
 private:
@@ -29,54 +28,89 @@ private:
     {
         cv_bridge::CvImagePtr cv_ptr;
         try {
-            // Перегоняем ROS-сообщение в формат OpenCV
             cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         } catch (cv_bridge::Exception& e) {
-            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            RCLCPP_ERROR(this->get_logger(), "CV Bridge error: %s", e.what());
             return;
         }
 
         cv::Mat frame = cv_ptr->image;
         if (frame.empty()) return;
 
-        // 1. Физическая обрезка зоны (ROI)
-        // Вычисляем центр и радиус (в 1.5 раза меньше от края, чтобы отсечь стенки)
-        cv::Point center(frame.cols / 2, frame.rows / 2);
-        int max_radius = std::min(frame.cols, frame.rows) / 2;
-        int roi_radius = max_radius / 1.5;
-
-        cv::Mat roi_mask = cv::Mat::zeros(frame.size(), CV_8UC1);
-        cv::circle(roi_mask, center, roi_radius, cv::Scalar(255), -1);
-
-        cv::Mat frame_roi;
-        frame.copyTo(frame_roi, roi_mask);
-
-        // 2. Уход от RGB: переводим в HSV и берем канал яркости (Value)
         cv::Mat hsv, v_channel;
-        cv::cvtColor(frame_roi, hsv, cv::COLOR_BGR2HSV);
-        std::vector<cv::Mat> hsv_channels;
-        cv::split(hsv, hsv_channels);
-        v_channel = hsv_channels[2]; // Канал V
+        cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
+        cv::extractChannel(hsv, v_channel, 2); // Берем только яркость
 
-        // 3. Умная бинаризация (Адаптивный порог)
-        // Тень темная, поэтому используем THRESH_BINARY_INV, чтобы она стала белой на черном фоне
-        cv::Mat thresh;
-        cv::adaptiveThreshold(v_channel, thresh, 255,
+        // ==========================================
+        // ШАГ 1: ДИНАМИЧЕСКИЙ ПОИСК ПОДЛОЖКИ (МЕТОД ОЦУ + CONVEX HULL)
+        // ==========================================
+        cv::Mat base_thresh;
+        // Оцу находит границу между темным фоном и светлой подложкой
+        cv::threshold(v_channel, base_thresh, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+        std::vector<std::vector<cv::Point>> base_contours;
+        cv::findContours(base_thresh, base_contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        cv::Mat dynamic_mask = cv::Mat::zeros(frame.size(), CV_8UC1);
+        if (!base_contours.empty()) {
+            // Ищем самую большую кляксу
+            int largest_idx = 0;
+            double max_base_area = 0;
+            for (size_t i = 0; i < base_contours.size(); i++) {
+                double area = cv::contourArea(base_contours[i]);
+                if (area > max_base_area) {
+                    max_base_area = area;
+                    largest_idx = i;
+                }
+            }
+
+            // --- НОВАЯ МАГИЯ ЗДЕСЬ ---
+            // Вычисляем выпуклую оболочку для этого контура.
+            // Даже если тень "прорвала" границу, Hull просто натянет "резинку"
+            // поверх этого прорыва, создав сплошной диск.
+            std::vector<cv::Point> hull;
+            cv::convexHull(base_contours[largest_idx], hull);
+
+            // Теперь рисуем не оригинальный контур, а эту выпуклую оболочку (и заливаем сплошь)
+            std::vector<std::vector<cv::Point>> hull_contours;
+            hull_contours.push_back(hull);
+            cv::drawContours(dynamic_mask, hull_contours, 0, cv::Scalar(255), -1);
+
+            // Сужаем маску (убираем грязные края)
+            cv::Mat erode_kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(15, 15));
+            cv::erode(dynamic_mask, dynamic_mask, erode_kernel);
+        }
+
+        // ==========================================
+        // ШАГ 2: УМНЫЙ ПОИСК ТЕНИ (АДАПТИВ)
+        // ==========================================
+        cv::Mat shadow_thresh;
+        // Окно 51 пиксель справится с жирной тенью, константа 10 дает запас по контрасту
+        cv::adaptiveThreshold(v_channel, shadow_thresh, 255,
                               cv::ADAPTIVE_THRESH_GAUSSIAN_C,
-                              cv::THRESH_BINARY_INV, 21, 15);
+                              cv::THRESH_BINARY_INV, 51, 10);
 
-        // Применяем нашу круглую маску еще раз, чтобы убрать мусор,
-        // который адаптивный порог мог вытянуть за пределами круга
-        cv::bitwise_and(thresh, roi_mask, thresh);
+        // ==========================================
+        // ШАГ 3: НАЛОЖЕНИЕ МАСКИ И ДЕБАГ
+        // ==========================================
+        cv::Mat clean_shadow;
+        // Оставляем от тени только то, что попало внутрь белого круга (dynamic_mask)
+        cv::bitwise_and(shadow_thresh, dynamic_mask, clean_shadow);
 
-        // 4. Выкашивание шумов (Морфология: Открытие)
-        // Эрозия убьет мелкий шум, дилатация вернет толщину нормальной тени
-        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
-        cv::morphologyEx(thresh, thresh, cv::MORPH_OPEN, kernel);
+        // Публикуем промежуточный результат (смотри в RViz топик /debug_thresh)
+        std_msgs::msg::Header header = msg->header;
+        cv_bridge::CvImage debug_msg(header, sensor_msgs::image_encodings::MONO8, clean_shadow);
+        debug_publisher_->publish(*debug_msg.toImageMsg());
 
-        // 5. Фильтрация контуров
+        // ==========================================
+        // ШАГ 4: МОРФОЛОГИЯ И ФИНАЛЬНЫЙ ФИЛЬТР
+        // ==========================================
+        // Слегка чистим шум
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
+        cv::morphologyEx(clean_shadow, clean_shadow, cv::MORPH_OPEN, kernel);
+
         std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        cv::findContours(clean_shadow, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
         cv::Mat final_mask = cv::Mat::zeros(frame.size(), CV_8UC1);
         double min_area = this->get_parameter("min_contour_area").as_double();
@@ -84,25 +118,20 @@ private:
 
         for (const auto& contour : contours) {
             double area = cv::contourArea(contour);
+            // Если пятно подходит по размеру — рисуем его в финальную маску
             if (area > min_area && area < max_area) {
-                // Проверяем точку роста: тень должна исходить от гномона (центра кадра)
-                // Для простоты проверяем, пересекает ли bounding box центр
-                cv::Rect bbox = cv::boundingRect(contour);
-                if (bbox.contains(center)) {
-                    // Рисуем отфильтрованную тень сплошным белым цветом
-                    cv::drawContours(final_mask, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(255), -1);
-                }
+                cv::drawContours(final_mask, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(255), -1);
             }
         }
 
-        // Пакуем обратно в ROS-сообщение и публикуем
-        std_msgs::msg::Header header = msg->header;
+        // Публикуем готовую маску тени
         cv_bridge::CvImage out_msg(header, sensor_msgs::image_encodings::MONO8, final_mask);
         publisher_->publish(*out_msg.toImageMsg());
     }
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr debug_publisher_;
 };
 
 int main(int argc, char * argv[])
@@ -112,4 +141,3 @@ int main(int argc, char * argv[])
     rclcpp::shutdown();
     return 0;
 }
-
