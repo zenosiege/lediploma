@@ -16,8 +16,6 @@ public:
         this->declare_parameter("min_radius", 10);
         this->declare_parameter("max_radius", 500);
         this->declare_parameter("shadow_thresh", 80);
-
-        // во сколько раз уменьшаем зону поиска тени
         this->declare_parameter("radius_scale", 1.5);
 
         lastLogTime = this->now();
@@ -29,7 +27,7 @@ public:
         pointPub = this->create_publisher<geometry_msgs::msg::Point>("/circle_detected", 10);
         imagePub = this->create_publisher<sensor_msgs::msg::Image>("/image_processed", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Нода обновлена. Добавлено ограничение рабочей зоны.");
+        RCLCPP_INFO(this->get_logger(), "Нода обновлена. Исправлено зеркалирование картинки.");
     }
 
 private:
@@ -51,6 +49,12 @@ private:
             RCLCPP_ERROR(this->get_logger(), "Ошибка cv_bridge: %s", e.what());
             return;
         }
+
+        // === ИСПРАВЛЕНИЕ ЗЕРКАЛИРОВАНИЯ ===
+        // cv::flip с параметром 1 разворачивает изображение по горизонтали (слева направо)
+        cv::Mat flippedImage;
+        cv::flip(cvPtr->image, flippedImage, 1);
+        cvPtr->image = flippedImage; // перезаписываем обратно в cvPtr
 
         cv::Mat imageGray;
         cv::cvtColor(cvPtr->image, imageGray, cv::COLOR_BGR2GRAY);
@@ -90,11 +94,8 @@ private:
 
             cv::Point center(cvRound(smoothX), cvRound(smoothY));
             int radius = cvRound(smoothR);
-
-            // ВЫЧИСЛЯЕМ РАДИУС ЗОНЫ ПОИСКА (отсекаем стенки)
             int searchRadius = cvRound(smoothR / radiusScale);
 
-            // Создаем маску круга, но уже с уменьшенным searchRadius
             cv::Mat circleMask = cv::Mat::zeros(imageGray.size(), CV_8UC1);
             cv::circle(circleMask, center, searchRadius, cv::Scalar(255), -1);
 
@@ -104,7 +105,6 @@ private:
             cv::Mat shadowOnly;
             cv::bitwise_and(darkPixels, circleMask, shadowOnly);
 
-            // Вырезаем саму зубочистку из маски (черный круг в центре)
             cv::circle(shadowOnly, center, 15, cv::Scalar(0), -1);
 
             std::vector<std::vector<cv::Point>> contours;
@@ -129,20 +129,26 @@ private:
                         int shadowY = cvRound(m.m01 / m.m00);
                         cv::Point shadowCenter(shadowX, shadowY);
 
-                        double angleRad = std::atan2(shadowY - center.y, shadowX - center.x);
+                        // Расчет угла: 0° — сверху, рост по часовой стрелке
+                        double dx = shadowX - center.x;
+                        double dy = shadowY - center.y;
+                        double angleRad = std::atan2(dx, -dy);
                         double angleDeg = angleRad * 180.0 / M_PI;
 
-                        // Линию тени рисуем длинной (до внешнего края стакана) для красоты
+                        if (angleDeg < 0) {
+                            angleDeg += 360.0;
+                        }
+
                         cv::Point lineEnd;
-                        lineEnd.x = center.x + radius * std::cos(angleRad);
-                        lineEnd.y = center.y + radius * std::sin(angleRad);
+                        lineEnd.x = center.x + radius * std::cos(angleRad - M_PI/2); // Корректируем отрисовку под новые оси
+                        lineEnd.y = center.y + radius * std::sin(angleRad - M_PI/2);
 
                         cv::line(cvPtr->image, center, lineEnd, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
                         cv::circle(cvPtr->image, shadowCenter, 5, cv::Scalar(0, 255, 255), -1);
 
                         auto currentTime = this->now();
                         if ((currentTime - lastLogTime).seconds() > 1.0) {
-                            RCLCPP_INFO(this->get_logger(), "Угол: %.2f° | Полный R: %d px | Зона поиска: %d px", angleDeg, radius, searchRadius);
+                            RCLCPP_INFO(this->get_logger(), "Угол тени: %.2f° | R: %d px", angleDeg, radius);
                             lastLogTime = currentTime;
                         }
 
@@ -155,11 +161,8 @@ private:
                 }
             }
 
-            // Рисуем зеленый контур самого стакана (внешняя граница)
             cv::circle(cvPtr->image, center, radius, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-            // Рисуем жёлтый контур рабочей зоны (отсекающий стенки)
             cv::circle(cvPtr->image, center, searchRadius, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
-            // Центр
             cv::circle(cvPtr->image, center, 3, cv::Scalar(255, 0, 0), -1, cv::LINE_AA);
         }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 17.0.2, 2026-05-16T15:46:11. -->
+<!-- Written by QtCreator 17.0.2, 2026-05-21T14:21:32. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -131,8 +131,8 @@
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
-     <value type="QString">AMENT_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass:/opt/ros/humble</value>
-     <value type="QString">CMAKE_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass</value>
+     <value type="QString">AMENT_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass:/home/wattookie/Documents/diploma/install/shadow_filter:/opt/ros/humble</value>
+     <value type="QString">CMAKE_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass:/home/wattookie/Documents/diploma/install/shadow_filter</value>
      <value type="QString">COLCON_PREFIX_PATH=/home/wattookie/Documents/diploma/install</value>
      <value type="QString">LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib</value>
      <value type="QString">PATH=/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin</value>
