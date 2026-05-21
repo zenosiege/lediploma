@@ -32,7 +32,7 @@ public:
             cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
 
             RCLCPP_INFO(this->get_logger(),
-                        "Камера %d открыта, разрешение: %dx%d",
+                        "Камера %d открыта, разрешение: %dx%d (Зеркалирование исправлено)",
                         camera_id, frame_width, frame_height);
         } else {
             RCLCPP_ERROR(this->get_logger(),
@@ -63,6 +63,12 @@ private:
         }
 
         try {
+            // === ИСПРАВЛЕНИЕ ЗЕРКАЛИРОВАНИЯ ===
+            // Отражаем кадр по горизонтали (код 1), чтобы RViz и алгоритмы видели реальный мир
+            cv::Mat flipped_frame;
+            cv::flip(current_frame, flipped_frame, 1);
+            current_frame = flipped_frame;
+
             // Показываем изображение для отладки
             cv::imshow("Raw Camera Frame", current_frame);
             cv::waitKey(1);
@@ -77,26 +83,6 @@ private:
 
             // Публикуем изображение в топик
             image_pub_.publish(ros_image);
-
-            /*
-            ================================================================
-               БЛОК ВИЗУАЛЬНОЙ ОДОМЕТРИИ ВРЕМЕННО ЗАКОММЕНТИРОВАН
-            ================================================================
-            std::vector<cv::KeyPoint> curr_kp;
-            cv::Mat curr_desc;
-
-            orb_->detectAndCompute(current_frame, cv::noArray(), curr_kp, curr_desc);
-            if (curr_desc.empty()) return;
-
-            if (!prev_desc_.empty()) {
-                // ... весь код с RANSAC, вычислением углов и публикацией ...
-            }
-
-            prev_frame_ = current_frame.clone();
-            prev_kp_ = curr_kp;
-            prev_desc_ = curr_desc.clone();
-            ================================================================
-            */
 
         } catch (cv::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "OpenCV error: %s", e.what());

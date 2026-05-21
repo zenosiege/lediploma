@@ -6,28 +6,26 @@
 #include <vector>
 #include <cmath>
 
-class CircleDetectorNode : public rclcpp::Node {
+class ShadowTrackerNode : public rclcpp::Node {
 public:
-    CircleDetectorNode() : Node("circle_detector_node") {
-        this->declare_parameter("dp", 1.0);
-        this->declare_parameter("min_dist", 60.0);
-        this->declare_parameter("param1", 35.0);
-        this->declare_parameter("param2", 50.0);
-        this->declare_parameter("min_radius", 10);
-        this->declare_parameter("max_radius", 500);
-        this->declare_parameter("shadow_thresh", 80);
-        this->declare_parameter("radius_scale", 1.5);
+    ShadowTrackerNode() : Node("shadow_tracker_node") {
+        // Пороги для новой картинки: белая тень на черном фоне
+        this->declare_parameter("white_thresh", 200); // Всё светлее 200 - это тень
+        this->declare_parameter("black_thresh", 50);  // Всё темнее 50 - это круг
+
+        // Коэффициент обрезки краев (0.9 означает, что мы ищем тень только в пределах 90% радиуса)
+        this->declare_parameter("edge_margin", 0.9);
 
         lastLogTime = this->now();
 
         imageSub = this->create_subscription<sensor_msgs::msg::Image>(
-            "/camera", 10,
-            std::bind(&CircleDetectorNode::imageCallback, this, std::placeholders::_1));
+            "/shadow_mask_color", 10,
+            std::bind(&ShadowTrackerNode::imageCallback, this, std::placeholders::_1));
 
         pointPub = this->create_publisher<geometry_msgs::msg::Point>("/circle_detected", 10);
         imagePub = this->create_publisher<sensor_msgs::msg::Image>("/image_processed", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Нода обновлена. Исправлено зеркалирование картинки.");
+        RCLCPP_INFO(this->get_logger(), "Нода работает: БЕЛАЯ тень на ЧЕРНОМ круге. Защита от мусора включена.");
     }
 
 private:
@@ -36,6 +34,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr imagePub;
     rclcpp::Time lastLogTime;
 
+    // Переменные для сглаживания (чтобы круг не дергался)
     double smoothX = 0.0;
     double smoothY = 0.0;
     double smoothR = 0.0;
@@ -50,120 +49,128 @@ private:
             return;
         }
 
-        // === ИСПРАВЛЕНИЕ ЗЕРКАЛИРОВАНИЯ ===
-        // cv::flip с параметром 1 разворачивает изображение по горизонтали (слева направо)
-        cv::Mat flippedImage;
-        cv::flip(cvPtr->image, flippedImage, 1);
-        cvPtr->image = flippedImage; // перезаписываем обратно в cvPtr
+        int whiteThresh = this->get_parameter("white_thresh").as_int();
+        int blackThresh = this->get_parameter("black_thresh").as_int();
+        double edgeMargin = this->get_parameter("edge_margin").as_double();
 
-        cv::Mat imageGray;
-        cv::cvtColor(cvPtr->image, imageGray, cv::COLOR_BGR2GRAY);
-        cv::GaussianBlur(imageGray, imageGray, cv::Size(9, 9), 2, 2);
+        // 2. ВЫДЕЛЕНИЕ ЦВЕТОВ
+        cv::Mat shadowMask, blackCircleMask, fullCircleMask;
 
-        int shadowThresh = this->get_parameter("shadow_thresh").as_int();
-        double radiusScale = this->get_parameter("radius_scale").as_double();
+        // Белая тень
+        cv::inRange(cvPtr->image, cv::Scalar(whiteThresh, whiteThresh, whiteThresh),
+                    cv::Scalar(255, 255, 255), shadowMask);
 
-        std::vector<cv::Vec3f> circles;
-        cv::HoughCircles(imageGray, circles, cv::HOUGH_GRADIENT,
-                         this->get_parameter("dp").as_double(),
-                         this->get_parameter("min_dist").as_double(),
-                         this->get_parameter("param1").as_double(),
-                         this->get_parameter("param2").as_double(),
-                         this->get_parameter("min_radius").as_int(),
-                         this->get_parameter("max_radius").as_int());
+        // Чёрный круг
+        cv::inRange(cvPtr->image, cv::Scalar(0, 0, 0),
+                    cv::Scalar(blackThresh, blackThresh, blackThresh), blackCircleMask);
+
+        // Склеиваем, чтобы получить сплошной круг (без дырки от белой тени)
+        cv::bitwise_or(blackCircleMask, shadowMask, fullCircleMask);
 
         auto resultMsg = geometry_msgs::msg::Point();
 
-        if (!circles.empty()) {
-            cv::Vec3f largestCircle = circles[0];
-            for (size_t i = 1; i < circles.size(); i++) {
-                if (circles[i][2] > largestCircle[2]) largestCircle = circles[i];
-            }
+        // 3. ПОИСК ЦЕНТРА КРУГА И РАДИУСА
+        std::vector<std::vector<cv::Point>> circleContours;
+        cv::findContours(fullCircleMask, circleContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-            if (isFirstCircle) {
-                smoothX = largestCircle[0];
-                smoothY = largestCircle[1];
-                smoothR = largestCircle[2];
-                isFirstCircle = false;
-            } else {
-                double alpha = 0.15;
-                smoothX = smoothX * (1.0 - alpha) + largestCircle[0] * alpha;
-                smoothY = smoothY * (1.0 - alpha) + largestCircle[1] * alpha;
-                smoothR = smoothR * (1.0 - alpha) + largestCircle[2] * alpha;
-            }
-
-            cv::Point center(cvRound(smoothX), cvRound(smoothY));
-            int radius = cvRound(smoothR);
-            int searchRadius = cvRound(smoothR / radiusScale);
-
-            cv::Mat circleMask = cv::Mat::zeros(imageGray.size(), CV_8UC1);
-            cv::circle(circleMask, center, searchRadius, cv::Scalar(255), -1);
-
-            cv::Mat darkPixels;
-            cv::threshold(imageGray, darkPixels, shadowThresh, 255, cv::THRESH_BINARY_INV);
-
-            cv::Mat shadowOnly;
-            cv::bitwise_and(darkPixels, circleMask, shadowOnly);
-
-            cv::circle(shadowOnly, center, 15, cv::Scalar(0), -1);
-
-            std::vector<std::vector<cv::Point>> contours;
-            cv::findContours(shadowOnly, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-            if (!contours.empty()) {
-                double maxArea = 0.0;
-                int maxIdx = -1;
-
-                for (size_t i = 0; i < contours.size(); i++) {
-                    double area = cv::contourArea(contours[i]);
-                    if (area > maxArea) {
-                        maxArea = area;
-                        maxIdx = (int)i;
-                    }
-                }
-
-                if (maxIdx != -1 && maxArea > 50.0) {
-                    cv::Moments m = cv::moments(contours[maxIdx]);
-                    if (m.m00 > 0) {
-                        int shadowX = cvRound(m.m10 / m.m00);
-                        int shadowY = cvRound(m.m01 / m.m00);
-                        cv::Point shadowCenter(shadowX, shadowY);
-
-                        // Расчет угла: 0° — сверху, рост по часовой стрелке
-                        double dx = shadowX - center.x;
-                        double dy = shadowY - center.y;
-                        double angleRad = std::atan2(dx, -dy);
-                        double angleDeg = angleRad * 180.0 / M_PI;
-
-                        if (angleDeg < 0) {
-                            angleDeg += 360.0;
-                        }
-
-                        cv::Point lineEnd;
-                        lineEnd.x = center.x + radius * std::cos(angleRad - M_PI/2); // Корректируем отрисовку под новые оси
-                        lineEnd.y = center.y + radius * std::sin(angleRad - M_PI/2);
-
-                        cv::line(cvPtr->image, center, lineEnd, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
-                        cv::circle(cvPtr->image, shadowCenter, 5, cv::Scalar(0, 255, 255), -1);
-
-                        auto currentTime = this->now();
-                        if ((currentTime - lastLogTime).seconds() > 1.0) {
-                            RCLCPP_INFO(this->get_logger(), "Угол тени: %.2f° | R: %d px", angleDeg, radius);
-                            lastLogTime = currentTime;
-                        }
-
-                        resultMsg.x = center.x;
-                        resultMsg.y = center.y;
-                        resultMsg.z = angleDeg;
-                    }
-
-                    cv::drawContours(cvPtr->image, contours, maxIdx, cv::Scalar(0, 0, 255), -1);
+        if (!circleContours.empty()) {
+            double maxCircleArea = 0.0;
+            int mainCircleIdx = -1;
+            for (size_t i = 0; i < circleContours.size(); i++) {
+                double area = cv::contourArea(circleContours[i]);
+                if (area > maxCircleArea) {
+                    maxCircleArea = area;
+                    mainCircleIdx = (int)i;
                 }
             }
 
-            cv::circle(cvPtr->image, center, radius, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-            cv::circle(cvPtr->image, center, searchRadius, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
-            cv::circle(cvPtr->image, center, 3, cv::Scalar(255, 0, 0), -1, cv::LINE_AA);
+            if (mainCircleIdx != -1 && maxCircleArea > 1000) {
+                cv::Point2f centerFloat;
+                float radiusFloat;
+                cv::minEnclosingCircle(circleContours[mainCircleIdx], centerFloat, radiusFloat);
+
+                // === СГЛАЖИВАНИЕ ДРОЖАНИЯ ===
+                if (isFirstCircle) {
+                    smoothX = centerFloat.x;
+                    smoothY = centerFloat.y;
+                    smoothR = radiusFloat;
+                    isFirstCircle = false;
+                } else {
+                    double alpha = 0.15; // Плавность
+                    smoothX = smoothX * (1.0 - alpha) + centerFloat.x * alpha;
+                    smoothY = smoothY * (1.0 - alpha) + centerFloat.y * alpha;
+                    smoothR = smoothR * (1.0 - alpha) + radiusFloat * alpha;
+                }
+
+                cv::Point center(cvRound(smoothX), cvRound(smoothY));
+                int radius = cvRound(smoothR);
+
+                // === ФИЛЬТРАЦИЯ БЕЛОГО МУСОРА ПО КРАЯМ ===
+                // Создаем маску рабочей зоны, отсекая края
+                int searchRadius = cvRound(smoothR * edgeMargin);
+                cv::Mat searchMask = cv::Mat::zeros(shadowMask.size(), CV_8UC1);
+                cv::circle(searchMask, center, searchRadius, cv::Scalar(255), -1);
+
+                // Оставляем только те белые пиксели (тень), которые попали в searchMask
+                cv::Mat cleanShadowMask;
+                cv::bitwise_and(shadowMask, searchMask, cleanShadowMask);
+
+                // 4. ПОИСК ТЕНИ
+                std::vector<std::vector<cv::Point>> shadowContours;
+                cv::findContours(cleanShadowMask, shadowContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+                if (!shadowContours.empty()) {
+                    double maxShadowArea = 0.0;
+                    int mainShadowIdx = -1;
+
+                    for (size_t i = 0; i < shadowContours.size(); i++) {
+                        double area = cv::contourArea(shadowContours[i]);
+                        if (area > maxShadowArea) {
+                            maxShadowArea = area;
+                            mainShadowIdx = (int)i;
+                        }
+                    }
+
+                    if (mainShadowIdx != -1 && maxShadowArea > 20) {
+                        cv::Moments m = cv::moments(shadowContours[mainShadowIdx]);
+                        if (m.m00 > 0) {
+                            int shadowX = cvRound(m.m10 / m.m00);
+                            int shadowY = cvRound(m.m01 / m.m00);
+                            cv::Point shadowCenter(shadowX, shadowY);
+
+                            double dx = shadowX - center.x;
+                            double dy = shadowY - center.y;
+                            double angleRad = std::atan2(dx, -dy);
+                            double angleDeg = angleRad * 180.0 / M_PI;
+
+                            if (angleDeg < 0) angleDeg += 360.0;
+
+                            cv::Point lineEnd;
+                            lineEnd.x = center.x + radius * std::cos(angleRad - M_PI/2);
+                            lineEnd.y = center.y + radius * std::sin(angleRad - M_PI/2);
+
+                            // Рисуем
+                            cv::line(cvPtr->image, center, lineEnd, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
+                            cv::circle(cvPtr->image, shadowCenter, 5, cv::Scalar(0, 255, 255), -1);
+
+                            auto currentTime = this->now();
+                            if ((currentTime - lastLogTime).seconds() > 1.0) {
+                                RCLCPP_INFO(this->get_logger(), "Азимут тени: %.2f°", angleDeg);
+                                lastLogTime = currentTime;
+                            }
+
+                            resultMsg.x = center.x;
+                            resultMsg.y = center.y;
+                            resultMsg.z = angleDeg;
+                        }
+                    }
+                }
+
+                // Визуализация
+                cv::circle(cvPtr->image, center, radius, cv::Scalar(0, 255, 0), 2, cv::LINE_AA); // Контур круга
+                cv::circle(cvPtr->image, center, searchRadius, cv::Scalar(0, 255, 255), 1, cv::LINE_AA); // Жёлтая рабочая зона
+                cv::circle(cvPtr->image, center, 4, cv::Scalar(255, 0, 0), -1, cv::LINE_AA); // Центр
+            }
         }
 
         pointPub->publish(resultMsg);
@@ -175,7 +182,7 @@ private:
 
 int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<CircleDetectorNode>());
+    rclcpp::spin(std::make_shared<ShadowTrackerNode>());
     rclcpp::shutdown();
     return 0;
 }
