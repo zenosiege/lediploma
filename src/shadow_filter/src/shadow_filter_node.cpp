@@ -48,7 +48,12 @@ private:
         // ШАГ 1: ДИНАМИЧЕСКИЙ ПОИСК ПОДЛОЖКИ (ОЦУ + CONVEX HULL)
         // ==========================================
         cv::Mat baseThresh;
-        cv::threshold(vChannel, baseThresh, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+        cv::Mat equalizedV;
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8)); // ClipLimit = 3.0
+        clahe->apply(vChannel, equalizedV);
+
+        // И теперь Оцу натравливаем на контрастную картинку:
+        cv::threshold(equalizedV, baseThresh, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
 
         std::vector<std::vector<cv::Point>> baseContours;
         cv::findContours(baseThresh, baseContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
