@@ -9,12 +9,14 @@
 class ShadowTrackerNode : public rclcpp::Node {
 public:
     ShadowTrackerNode() : Node("shadow_tracker_node") {
-        // Пороги для новой картинки: белая тень на черном фоне
-        this->declare_parameter("white_thresh", 200); // Всё светлее 200 - это тень
-        this->declare_parameter("black_thresh", 50);  // Всё темнее 50 - это круг
-
-        // Коэффициент обрезки краев (0.9 означает, что мы ищем тень только в пределах 90% радиуса)
+        // Настройки зрения
+        this->declare_parameter("white_thresh", 200);
+        this->declare_parameter("black_thresh", 50);
         this->declare_parameter("edge_margin", 0.9);
+
+        // Географические координаты (по умолчанию - Рязань)
+        this->declare_parameter("latitude", 54.6269);
+        this->declare_parameter("longitude", 39.7145);
 
         lastLogTime = this->now();
 
@@ -22,10 +24,10 @@ public:
             "/shadow_mask_color", 10,
             std::bind(&ShadowTrackerNode::imageCallback, this, std::placeholders::_1));
 
-        pointPub = this->create_publisher<geometry_msgs::msg::Point>("/circle_detected", 10);
+        pointPub = this->create_publisher<geometry_msgs::msg::Point>("/robot_heading", 10);
         imagePub = this->create_publisher<sensor_msgs::msg::Image>("/image_processed", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Нода работает: БЕЛАЯ тень на ЧЕРНОМ круге. Защита от мусора включена.");
+        RCLCPP_INFO(this->get_logger(), "Астрономический навигатор запущен. Вычисляем истинный курс...");
     }
 
 private:
@@ -34,42 +36,72 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr imagePub;
     rclcpp::Time lastLogTime;
 
-    // Переменные для сглаживания (чтобы круг не дергался)
     double smoothX = 0.0;
     double smoothY = 0.0;
     double smoothR = 0.0;
     bool isFirstCircle = true;
+
+    // === АСТРОНОМИЧЕСКИЙ БЛОК ===
+    // Вычисляет азимут Солнца на основе времени и координат
+    double getSunAzimuth(double lat, double lon, double unix_time) {
+        // Перевод времени в дни с эпохи J2000
+        double d = (unix_time / 86400.0) + 2440587.5 - 2451545.0;
+
+        // Эклиптические координаты
+        double L = fmod(280.460 + 0.9856474 * d, 360.0);
+        if (L < 0) L += 360.0;
+        double g = fmod(357.528 + 0.9856003 * d, 360.0);
+        if (g < 0) g += 360.0;
+
+        double g_rad = g * M_PI / 180.0;
+        double lambda = L + 1.915 * std::sin(g_rad) + 0.020 * std::sin(2 * g_rad);
+        double lambda_rad = lambda * M_PI / 180.0;
+
+        double epsilon_rad = (23.439 - 0.0000004 * d) * M_PI / 180.0;
+
+        // Склонение и прямое восхождение
+        double delta_rad = std::asin(std::sin(epsilon_rad) * std::sin(lambda_rad));
+        double alpha_rad = std::atan2(std::cos(epsilon_rad) * std::sin(lambda_rad), std::cos(lambda_rad));
+
+        // Звездное время
+        double gmst = fmod(6.697375 + 0.0657098242 * d + (fmod(unix_time, 86400.0) / 3600.0) * 1.0027379, 24.0);
+        if (gmst < 0) gmst += 24.0;
+
+        double lmst_rad = (gmst * 15.0 + lon) * M_PI / 180.0;
+        double H_rad = lmst_rad - alpha_rad;
+        double lat_rad = lat * M_PI / 180.0;
+
+        // Расчет азимута
+        double az_rad = std::atan2(std::sin(H_rad), std::cos(H_rad) * std::sin(lat_rad) - std::tan(delta_rad) * std::cos(lat_rad));
+        double az_deg = az_rad * 180.0 / M_PI;
+
+        // Переводим отсчет от Севера в формат 0..360
+        az_deg = fmod(az_deg + 180.0, 360.0);
+        return az_deg;
+    }
 
     void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg) {
         cv_bridge::CvImagePtr cvPtr;
         try {
             cvPtr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         } catch (cv_bridge::Exception& e) {
-            RCLCPP_ERROR(this->get_logger(), "Ошибка cv_bridge: %s", e.what());
             return;
         }
 
+        // Берем параметры
         int whiteThresh = this->get_parameter("white_thresh").as_int();
         int blackThresh = this->get_parameter("black_thresh").as_int();
         double edgeMargin = this->get_parameter("edge_margin").as_double();
+        double lat = this->get_parameter("latitude").as_double();
+        double lon = this->get_parameter("longitude").as_double();
 
-        // 2. ВЫДЕЛЕНИЕ ЦВЕТОВ
         cv::Mat shadowMask, blackCircleMask, fullCircleMask;
-
-        // Белая тень
-        cv::inRange(cvPtr->image, cv::Scalar(whiteThresh, whiteThresh, whiteThresh),
-                    cv::Scalar(255, 255, 255), shadowMask);
-
-        // Чёрный круг
-        cv::inRange(cvPtr->image, cv::Scalar(0, 0, 0),
-                    cv::Scalar(blackThresh, blackThresh, blackThresh), blackCircleMask);
-
-        // Склеиваем, чтобы получить сплошной круг (без дырки от белой тени)
+        cv::inRange(cvPtr->image, cv::Scalar(whiteThresh, whiteThresh, whiteThresh), cv::Scalar(255, 255, 255), shadowMask);
+        cv::inRange(cvPtr->image, cv::Scalar(0, 0, 0), cv::Scalar(blackThresh, blackThresh, blackThresh), blackCircleMask);
         cv::bitwise_or(blackCircleMask, shadowMask, fullCircleMask);
 
         auto resultMsg = geometry_msgs::msg::Point();
 
-        // 3. ПОИСК ЦЕНТРА КРУГА И РАДИУСА
         std::vector<std::vector<cv::Point>> circleContours;
         cv::findContours(fullCircleMask, circleContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
@@ -89,14 +121,13 @@ private:
                 float radiusFloat;
                 cv::minEnclosingCircle(circleContours[mainCircleIdx], centerFloat, radiusFloat);
 
-                // === СГЛАЖИВАНИЕ ДРОЖАНИЯ ===
                 if (isFirstCircle) {
                     smoothX = centerFloat.x;
                     smoothY = centerFloat.y;
                     smoothR = radiusFloat;
                     isFirstCircle = false;
                 } else {
-                    double alpha = 0.15; // Плавность
+                    double alpha = 0.15;
                     smoothX = smoothX * (1.0 - alpha) + centerFloat.x * alpha;
                     smoothY = smoothY * (1.0 - alpha) + centerFloat.y * alpha;
                     smoothR = smoothR * (1.0 - alpha) + radiusFloat * alpha;
@@ -105,17 +136,13 @@ private:
                 cv::Point center(cvRound(smoothX), cvRound(smoothY));
                 int radius = cvRound(smoothR);
 
-                // === ФИЛЬТРАЦИЯ БЕЛОГО МУСОРА ПО КРАЯМ ===
-                // Создаем маску рабочей зоны, отсекая края
                 int searchRadius = cvRound(smoothR * edgeMargin);
                 cv::Mat searchMask = cv::Mat::zeros(shadowMask.size(), CV_8UC1);
                 cv::circle(searchMask, center, searchRadius, cv::Scalar(255), -1);
 
-                // Оставляем только те белые пиксели (тень), которые попали в searchMask
                 cv::Mat cleanShadowMask;
                 cv::bitwise_and(shadowMask, searchMask, cleanShadowMask);
 
-                // 4. ПОИСК ТЕНИ
                 std::vector<std::vector<cv::Point>> shadowContours;
                 cv::findContours(cleanShadowMask, shadowContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
@@ -138,38 +165,50 @@ private:
                             int shadowY = cvRound(m.m01 / m.m00);
                             cv::Point shadowCenter(shadowX, shadowY);
 
+                            // 1. Считаем локальный угол тени в камере
                             double dx = shadowX - center.x;
                             double dy = shadowY - center.y;
-                            double angleRad = std::atan2(dx, -dy);
-                            double angleDeg = angleRad * 180.0 / M_PI;
+                            double shadowAngle = std::atan2(dx, -dy) * 180.0 / M_PI;
+                            if (shadowAngle < 0) shadowAngle += 360.0;
 
-                            if (angleDeg < 0) angleDeg += 360.0;
+                            // 2. Считаем Азимут Солнца по времени
+                            double unix_time = this->now().seconds();
+                            double sunAzimuth = getSunAzimuth(lat, lon, unix_time);
 
+                            // 3. ВЫЧИСЛЯЕМ ИСТИННЫЙ КУРС РОБОТА
+                            double robotHeading = fmod(sunAzimuth + 180.0 - shadowAngle + 360.0, 360.0);
+
+                            // Отрисовка
                             cv::Point lineEnd;
-                            lineEnd.x = center.x + radius * std::cos(angleRad - M_PI/2);
-                            lineEnd.y = center.y + radius * std::sin(angleRad - M_PI/2);
+                            lineEnd.x = center.x + radius * std::cos((shadowAngle - 90) * M_PI / 180.0);
+                            lineEnd.y = center.y + radius * std::sin((shadowAngle - 90) * M_PI / 180.0);
 
-                            // Рисуем
                             cv::line(cvPtr->image, center, lineEnd, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
                             cv::circle(cvPtr->image, shadowCenter, 5, cv::Scalar(0, 255, 255), -1);
 
+                            // Вывод всех данных в терминал (раз в секунду)
                             auto currentTime = this->now();
                             if ((currentTime - lastLogTime).seconds() > 1.0) {
-                                RCLCPP_INFO(this->get_logger(), "Азимут тени: %.2f°", angleDeg);
+                                RCLCPP_INFO(this->get_logger(),
+                                            "\n--- Навигация ---\n"
+                                            "Азимут Солнца: %.2f°\n"
+                                            "Угол тени:     %.2f°\n"
+                                            "КУРС РОБОТА:   %.2f°",
+                                            sunAzimuth, shadowAngle, robotHeading);
                                 lastLogTime = currentTime;
                             }
 
+                            // Публикуем ИСТИННЫЙ КУРС в координату Z
                             resultMsg.x = center.x;
                             resultMsg.y = center.y;
-                            resultMsg.z = angleDeg;
+                            resultMsg.z = robotHeading;
                         }
                     }
                 }
 
-                // Визуализация
-                cv::circle(cvPtr->image, center, radius, cv::Scalar(0, 255, 0), 2, cv::LINE_AA); // Контур круга
-                cv::circle(cvPtr->image, center, searchRadius, cv::Scalar(0, 255, 255), 1, cv::LINE_AA); // Жёлтая рабочая зона
-                cv::circle(cvPtr->image, center, 4, cv::Scalar(255, 0, 0), -1, cv::LINE_AA); // Центр
+                cv::circle(cvPtr->image, center, radius, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+                cv::circle(cvPtr->image, center, searchRadius, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+                cv::circle(cvPtr->image, center, 4, cv::Scalar(255, 0, 0), -1, cv::LINE_AA);
             }
         }
 
