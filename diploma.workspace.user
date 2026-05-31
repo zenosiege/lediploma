@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 17.0.2, 2026-05-16T14:15:17. -->
+<!-- Written by QtCreator 18.0.2, 2026-05-31T18:46:02. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
-  <value type="QByteArray">{424a2c23-7ed2-45af-b9ca-05b5f4ee4e64}</value>
+  <value type="QByteArray">{02285c83-b684-4efd-ad36-ebca3db2075e}</value>
  </data>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -19,7 +19,7 @@
    <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.0">
     <value type="QString" key="language">Cpp</value>
     <valuemap type="QVariantMap" key="value">
-     <value type="QByteArray" key="CurrentPreferences">ROSProject.CppCodeStyle</value>
+     <value type="QByteArray" key="CurrentPreferences">CppGlobal</value>
     </valuemap>
    </valuemap>
    <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.1">
@@ -79,13 +79,14 @@
     <value type="bool" key="ClangTools.AnalyzeOpenFiles">true</value>
     <value type="bool" key="ClangTools.BuildBeforeAnalysis">true</value>
     <value type="QString" key="ClangTools.DiagnosticConfig">Builtin.DefaultTidyAndClazy</value>
-    <value type="int" key="ClangTools.ParallelJobs">8</value>
+    <value type="int" key="ClangTools.ParallelJobs">2</value>
     <value type="bool" key="ClangTools.PreferConfigFile">true</value>
     <valuelist type="QVariantList" key="ClangTools.SelectedDirs"/>
     <valuelist type="QVariantList" key="ClangTools.SelectedFiles"/>
     <valuelist type="QVariantList" key="ClangTools.SuppressedDiagnostics"/>
     <value type="bool" key="ClangTools.UseGlobalSettings">true</value>
    </valuemap>
+   <value type="int" key="RcSync">0</value>
   </valuemap>
  </data>
  <data>
@@ -95,7 +96,7 @@
    <value type="bool" key="HasPerBcDcs">true</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Desktop</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Desktop</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{e7358892-c559-4b2a-bfbc-a4164c4682ba}</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{a7c70b99-cfa1-48d4-a77c-2c8a83c35804}</value>
    <value type="qlonglong" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
    <value type="qlonglong" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
@@ -130,21 +131,7 @@
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
-    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
-     <value type="QString">AMENT_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass:/opt/ros/humble</value>
-     <value type="QString">CMAKE_PREFIX_PATH=/home/wattookie/Documents/diploma/install/test_image_sender:/home/wattookie/Documents/diploma/install/test_image_receiver:/home/wattookie/Documents/diploma/install/test_image_processing:/home/wattookie/Documents/diploma/install/sun_shadow_detection:/home/wattookie/Documents/diploma/install/sun_compass_odom:/home/wattookie/Documents/diploma/install/sun_compass_hough:/home/wattookie/Documents/diploma/install/sun_compass</value>
-     <value type="QString">COLCON_PREFIX_PATH=/home/wattookie/Documents/diploma/install</value>
-     <value type="QString">LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib</value>
-     <value type="QString">PATH=/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin</value>
-     <value type="QString">PYTHONPATH=/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages</value>
-     <value type="QString">QT_QPA_PLATFORM=xcb</value>
-     <value type="QString">ROS_DISTRO=humble</value>
-     <value type="QString">ROS_LOCALHOST_ONLY=0</value>
-     <value type="QString">ROS_PYTHON_VERSION=3</value>
-     <value type="QString">ROS_VERSION=2</value>
-     <value type="QString">SHLVL=1</value>
-     <value type="QString">_=/usr/bin/env</value>
-    </valuelist>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Debug</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ROSProjectManager.ROSBuildConfiguration</value>
     <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
@@ -176,8 +163,10 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
      <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
      <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
     </valuemap>
     <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">2</value>
@@ -246,8 +235,10 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
      <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
      <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
     </valuemap>
     <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">2</value>
@@ -316,8 +307,10 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
      <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
      <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
     </valuemap>
     <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">2</value>
@@ -386,8 +379,10 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
      <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
      <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
     </valuemap>
     <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">2</value>
@@ -456,8 +451,10 @@
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
      <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
      <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
      <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
      <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
     </valuemap>
     <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">2</value>
@@ -491,8 +488,10 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.CustomExecutableRunConfiguration</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey"></value>
     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">%{RunConfig:Executable:Path}</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>
@@ -500,10 +499,6 @@
  <data>
   <variable>ProjectExplorer.Project.TargetCount</variable>
   <value type="qlonglong">1</value>
- </data>
- <data>
-  <variable>ProjectExplorer.Project.Updater.FileVersion</variable>
-  <value type="int">22</value>
  </data>
  <data>
   <variable>Version</variable>
