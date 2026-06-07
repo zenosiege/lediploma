@@ -8,11 +8,11 @@
 
 using namespace std::chrono_literals;
 
-class VisualOdometryNode : public rclcpp::Node {
+class CameraSendNode : public rclcpp::Node {
 public:
-    VisualOdometryNode() : Node("visual_odom_node") {
+    CameraSendNode() : Node("camera_send_node") {
         // Объявляем параметры
-        this->declare_parameter("camera_id", 2);
+        this->declare_parameter("camera_id", 0);
         this->declare_parameter("frame_width", 640);
         this->declare_parameter("frame_height", 480);
 
@@ -32,7 +32,7 @@ public:
             cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
 
             RCLCPP_INFO(this->get_logger(),
-                        "Камера %d открыта, разрешение: %dx%d",
+                        "Камера %d открыта, разрешение: %dx%d (Зеркалирование исправлено)",
                         camera_id, frame_width, frame_height);
         } else {
             RCLCPP_ERROR(this->get_logger(),
@@ -47,7 +47,7 @@ public:
         cv::resizeWindow("Raw Camera Frame", frame_width, frame_height);
 
         timer_ = this->create_wall_timer(
-            30ms, std::bind(&VisualOdometryNode::timer_callback, this));
+            30ms, std::bind(&CameraSendNode::timer_callback, this));
     }
 
 private:
@@ -63,6 +63,12 @@ private:
         }
 
         try {
+            // === ИСПРАВЛЕНИЕ ЗЕРКАЛИРОВАНИЯ ===
+            // Отражаем кадр по горизонтали (код 1), чтобы RViz и алгоритмы видели реальный мир
+            cv::Mat flipped_frame;
+            cv::flip(current_frame, flipped_frame, 1);
+            current_frame = flipped_frame;
+
             // Показываем изображение для отладки
             cv::imshow("Raw Camera Frame", current_frame);
             cv::waitKey(1);
@@ -78,26 +84,6 @@ private:
             // Публикуем изображение в топик
             image_pub_.publish(ros_image);
 
-            /*
-            ================================================================
-               БЛОК ВИЗУАЛЬНОЙ ОДОМЕТРИИ ВРЕМЕННО ЗАКОММЕНТИРОВАН
-            ================================================================
-            std::vector<cv::KeyPoint> curr_kp;
-            cv::Mat curr_desc;
-
-            orb_->detectAndCompute(current_frame, cv::noArray(), curr_kp, curr_desc);
-            if (curr_desc.empty()) return;
-
-            if (!prev_desc_.empty()) {
-                // ... весь код с RANSAC, вычислением углов и публикацией ...
-            }
-
-            prev_frame_ = current_frame.clone();
-            prev_kp_ = curr_kp;
-            prev_desc_ = curr_desc.clone();
-            ================================================================
-            */
-
         } catch (cv::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "OpenCV error: %s", e.what());
         }
@@ -107,17 +93,11 @@ private:
     cv::VideoCapture cap_;
     image_transport::Publisher image_pub_;
 
-    // Переменные для визуальной одометрии (закомментированы)
-    // cv::Ptr<cv::ORB> orb_;
-    // cv::Ptr<cv::DescriptorMatcher> matcher_;
-    // cv::Mat prev_frame_, prev_desc_;
-    // std::vector<cv::KeyPoint> prev_kp_;
-    // double total_theta_;
 };
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<VisualOdometryNode>());
+    rclcpp::spin(std::make_shared<CameraSendNode>());
     rclcpp::shutdown();
     return 0;
 }
