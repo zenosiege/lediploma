@@ -72,17 +72,17 @@ private:
         // ==========================================
         cv::Mat normalizedV, blurredBase, baseThresh;
 
+        // гауссовское размытие с нулевым средним и размером ядра 51х51
+        // ядро специально большое, чтобы на выходе получилось - тёмный фон и просто круг
+        // (усреднение с большим ядром сотрёт тень от гномона, ибо о ней и не стоит вопроса сейчас)
+        cv::GaussianBlur(vChannel, blurredBase, cv::Size(51, 51), 0);
+
         // нормализация vChannel в диапазоне от 0 до 255 по алгоритму NORM_MINMAX
         // и передача результата в normalizedV
         // (растяжение некого диапазона на всю ширину, потому что некоторых уровней
         // яркостей, таких как абсолютно черный - 0, может и не быть. Нормализованное
         // изображение даёт больше информации для алгоритма, отчего он работает лучше)
-        cv::normalize(vChannel, normalizedV, 0, 255, cv::NORM_MINMAX);
-
-        // гауссовское размытие с нулевым средним и размером ядра 21х21
-        // ядро специально большое, чтобы на выходе получилось - тёмный фон и просто круг
-        // (усреднение с большим ядром сотрёт тень от гномона, ибо о ней и не стоит вопроса сейчас)
-        cv::GaussianBlur(normalizedV, blurredBase, cv::Size(21, 21), 0);
+        cv::normalize(blurredBase, normalizedV, 0, 255, cv::NORM_MINMAX);
 
         // делим картинку на чёрное(фон) и белое(экран стканчика).
         // размытое изображение оценивается методом Отцу, и получившееся значение
@@ -247,8 +247,9 @@ private:
             }
         }
 
+
         std_msgs::msg::Header header = msg->header;
-        cv_bridge::CvImage debugMsg(header, sensor_msgs::image_encodings::MONO8, cleanShadow);
+        cv_bridge::CvImage debugMsg(header, sensor_msgs::image_encodings::MONO8, blurredBase);
         debugPub->publish(*debugMsg.toImageMsg());
         cv_bridge::CvImage outMsg(header, sensor_msgs::image_encodings::MONO8, finalMask);
         imagePub->publish(*outMsg.toImageMsg());
