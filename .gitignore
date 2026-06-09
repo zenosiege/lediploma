@@ -86,3 +86,4 @@ CMakeLists.txt.user*
 /src/sun_compass/
 /src/sun_compass_odom/
 /src/test_image*/
+/.qtcreator/

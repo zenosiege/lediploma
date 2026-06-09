@@ -6,9 +6,9 @@
 #include <vector>
 #include <cmath>
 
-class ShadowTrackerNode : public rclcpp::Node {
+class SunShadowDetectionNode : public rclcpp::Node {
 public:
-    ShadowTrackerNode() : Node("shadow_tracker_node") {
+    SunShadowDetectionNode() : Node("sun_shadow_detection_node") {
         // Настройки зрения
         this->declare_parameter("white_thresh", 200);
         this->declare_parameter("black_thresh", 50);
@@ -22,7 +22,7 @@ public:
 
         imageSub = this->create_subscription<sensor_msgs::msg::Image>(
             "/shadow_mask_color", 10,
-            std::bind(&ShadowTrackerNode::imageCallback, this, std::placeholders::_1));
+            std::bind(&SunShadowDetectionNode::imageCallback, this, std::placeholders::_1));
 
         pointPub = this->create_publisher<geometry_msgs::msg::Point>("/robot_heading", 10);
         imagePub = this->create_publisher<sensor_msgs::msg::Image>("/image_processed", 10);
@@ -221,7 +221,7 @@ private:
 
 int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<ShadowTrackerNode>());
+    rclcpp::spin(std::make_shared<SunShadowDetectionNode>());
     rclcpp::shutdown();
     return 0;
 }
