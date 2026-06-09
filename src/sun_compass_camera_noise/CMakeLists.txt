@@ -12,8 +12,6 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -35,7 +33,7 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}
 )
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cpp)
-ament_target_dependencies(${PROJECT_NAME}_node rclcpp sensor_msgs std_msgs cv_bridge image_transport OpenCV nav_msgs)
+ament_target_dependencies(${PROJECT_NAME}_node rclcpp sensor_msgs cv_bridge image_transport OpenCV)
 install(TARGETS
     ${PROJECT_NAME}_node
     DESTINATION lib/${PROJECT_NAME}

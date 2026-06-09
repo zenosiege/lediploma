@@ -193,6 +193,7 @@ private:
         // Размываем УЖЕ ОЧИЩЕННУЮ картинку огромным ядром
         cv::GaussianBlur(denoisedV, bg, cv::Size(bgBlurSize, bgBlurSize), 0);
 
+
         // 3. ВЫЧИТАНИЕ (Оставляем только полезную информацию)
         // (из чего вычитаем, что именно, куда сохранить, в пределах какой области)
         cv::subtract(bg, denoisedV, diff, dynamicMask);
@@ -249,7 +250,7 @@ private:
 
 
         std_msgs::msg::Header header = msg->header;
-        cv_bridge::CvImage debugMsg(header, sensor_msgs::image_encodings::MONO8, blurredBase);
+        cv_bridge::CvImage debugMsg(header, sensor_msgs::image_encodings::MONO8, diff);
         debugPub->publish(*debugMsg.toImageMsg());
         cv_bridge::CvImage outMsg(header, sensor_msgs::image_encodings::MONO8, finalMask);
         imagePub->publish(*outMsg.toImageMsg());

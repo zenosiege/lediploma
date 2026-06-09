@@ -18,7 +18,7 @@
 # 4. Разделение нод
 *заглушка - будет изменено позже*
 
-- sun_compass_camera/sun_compass_camera_noise - Пантилеев Данила Юрьевич;
+- sun_compass_camera_noise - Пантилеев Данила Юрьевич;
 - shadow_filter - Пантилеев Данила Юрьевич;
 - sun_shadow_detection - Максев Алексей Олегович.
 
