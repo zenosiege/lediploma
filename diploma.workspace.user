@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 18.0.2, 2026-05-31T18:46:02. -->
+<!-- Written by QtCreator 18.0.2, 2026-06-08T09:01:57. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -131,7 +131,22 @@
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
-    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
+     <value type="QString">AMENT_PREFIX_PATH=/home/charlotte/Documents/lediploma/install/sun_shadow_detection:/home/charlotte/Documents/lediploma/install/sun_raw_shadow_detection:/home/charlotte/Documents/lediploma/install/sun_compass_hough_noise:/home/charlotte/Documents/lediploma/install/sun_compass_hough:/home/charlotte/Documents/lediploma/install/sun_compass_camera_noise:/home/charlotte/Documents/lediploma/install/sun_compass_camera:/home/charlotte/Documents/lediploma/install/shadow_filter:/opt/ros/humble</value>
+     <value type="QString">CMAKE_PREFIX_PATH=/home/charlotte/Documents/lediploma/install/sun_shadow_detection:/home/charlotte/Documents/lediploma/install/sun_raw_shadow_detection:/home/charlotte/Documents/lediploma/install/sun_compass_hough_noise:/home/charlotte/Documents/lediploma/install/sun_compass_hough:/home/charlotte/Documents/lediploma/install/sun_compass_camera_noise:/home/charlotte/Documents/lediploma/install/sun_compass_camera:/home/charlotte/Documents/lediploma/install/shadow_filter</value>
+     <value type="QString">COLCON_PREFIX_PATH=/home/charlotte/Documents/lediploma/install</value>
+     <value type="QString">LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib</value>
+     <value type="QString">PATH=/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin</value>
+     <value type="QString">PWD=/home/charlotte</value>
+     <value type="QString">PYTHONPATH=/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages</value>
+     <value type="QString">QT_QPA_PLATFORM=xcb</value>
+     <value type="QString">ROS_DISTRO=humble</value>
+     <value type="QString">ROS_LOCALHOST_ONLY=0</value>
+     <value type="QString">ROS_PYTHON_VERSION=3</value>
+     <value type="QString">ROS_VERSION=2</value>
+     <value type="QString">SHLVL=1</value>
+     <value type="QString">_=/usr/bin/env</value>
+    </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Debug</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ROSProjectManager.ROSBuildConfiguration</value>
     <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
