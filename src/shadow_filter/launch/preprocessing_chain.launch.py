@@ -1,9 +1,22 @@
 import os
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
+    # Объявляем сущность, которая будет считывать аргумент из командной строки
+    camera_id_arg = LaunchConfiguration('camera_id')
+
     return LaunchDescription([
+
+        # Декларируем сам аргумент, задаем ему значение по умолчанию ('0') и описание
+        DeclareLaunchArgument(
+            'camera_id',
+            default_value='0',
+            description='ID аппаратной камеры видеозахвата'
+        ),
+
         # Узел захвата видеопотока и генерации стохастических помех
         Node(
             package='sun_compass_camera_noise',
@@ -11,7 +24,7 @@ def generate_launch_description():
             name='camera_noise_node',
             output='screen',
             parameters=[{
-                'camera_id': 0,
+                'camera_id': camera_id_arg,
                 'frame_width': 640,
                 'frame_height': 480,
                 'enable_noise': True,
