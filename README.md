@@ -30,7 +30,7 @@
 
 Запуск нод осуществляется в несколько этапов:
 1. После сборки в папке проекта необходимо выполнить команду "source install/setup.bash" для установки программы.
-2. Запустить sun_compass_hough через команду "ros2 run sun_compass_hough sun_compass_hough_node".
+2. Запустить sun_compass_hough через команду "ros2 run sun_compass_camera_noise sun_compass_camera_noise_node".
 3. Запустить sun_shadow_detection через команду "ros2 run sun_shadow_detection sun_shadow_detection_node".
 
 Чтобы наблюдать выполнение программы, рекомендуется открыть rviz2, выполнив "rviz2" в терминале.
