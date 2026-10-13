@@ -87,3 +87,13 @@ CMakeLists.txt.user*
 /src/sun_compass_odom/
 /src/test_image*/
 /.qtcreator/
+
+# unnecessary files
+diploma.workspace_BACKUP_5477.user
+diploma.workspace_BASE_5593.user
+diploma.workspace_LOCAL_5477.user
+diploma.workspace_BASE_5477.user
+diploma.workspace_REMOTE_5477.user
+diploma.workspace_REMOTE_5593.user
+diploma.workspace_LOCAL_5593.user
+
